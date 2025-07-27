@@ -20,7 +20,8 @@ from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 # -------------------------------------------------------------
 def load_sft_dataset(train_path: str | None = None,
                      valid_path: str | None = None,
-                     hf_dataset: str = "Beomi/KoAlpaca-v1"):
+                     # Default to the latest KoAlpaca dataset
+                     hf_dataset: str = "Beomi/KoAlpaca-v1.1a"):
     """주어진 경로 혹은 HuggingFace 데이터셋을 로드하여 `train`과 `validation` 분할을 반환합니다."""
 
     if train_path and valid_path:
@@ -36,7 +37,7 @@ def load_sft_dataset(train_path: str | None = None,
             "validation": valid_data,
         }
     else:
-        # HuggingFace Datasets에서 KoAlpaca-v1 불러오기
+        # HuggingFace Datasets에서 KoAlpaca-v1.1a 불러오기
         try:
             dataset = load_dataset(hf_dataset)
         except Exception as e:
@@ -44,7 +45,6 @@ def load_sft_dataset(train_path: str | None = None,
                 f"Dataset '{hf_dataset}' could not be loaded. "
                 f"Check the dataset name or provide local JSONL files."
             ) from e
-
     return dataset
 
 
