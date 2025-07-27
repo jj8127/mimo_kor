@@ -11,9 +11,9 @@ from transformers import (
 )
 from modeling_mimo import MiMoForCausalLM
 from configuration_mimo import MiMoConfig
-
 # AutoConfig가 "mimo" model_type을 인식하도록 등록해준다.
 AutoConfig.register("mimo", MiMoConfig)
+
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
 
@@ -47,7 +47,6 @@ def load_sft_dataset(
                 f"Dataset '{hf_dataset}' could not be loaded. "
                 f"Check the dataset name or provide local JSONL files."
             ) from e
-
     return dataset
 
 
@@ -74,6 +73,7 @@ def load_model(model_dir: str = "./", dtype=torch.float16):
     config_path = os.path.join(model_dir, "config.json")
     if os.path.exists(config_path):
         # 우선 config를 로드하여 AutoConfig 호출 시 오류를 방지한다
+
         config = MiMoConfig.from_json_file(config_path)
     else:
         try:
