@@ -8,7 +8,10 @@ from transformers.models.qwen2.modeling_qwen2 import (Qwen2Attention,
                                                       Qwen2MLP, Qwen2Model,
                                                       Qwen2RMSNorm)
 
-from .configuration_mimo import MiMoConfig
+# Import the configuration from the same directory.  Relative imports work only
+# when the file is part of a package, so use an absolute import to allow
+# executing scripts directly from this repository without packaging.
+from configuration_mimo import MiMoConfig
 
 # MTP Layer 정의
 class MiMoMTPLayers(nn.Module):
