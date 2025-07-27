@@ -1,4 +1,3 @@
-import json
 import os
 
 import torch
@@ -18,26 +17,26 @@ from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 # -------------------------------------------------------------
 # 1. 데이터 로드
 # -------------------------------------------------------------
-def load_sft_dataset(train_path: str | None = None,
-                     valid_path: str | None = None,
-                     # Default to the latest KoAlpaca dataset
-                     hf_dataset: str = "Beomi/KoAlpaca-v1.1a"):
-    """주어진 경로 혹은 HuggingFace 데이터셋을 로드하여 `train`과 `validation` 분할을 반환합니다."""
+def load_sft_dataset(
+    train_path: str | None = None,
+    valid_path: str | None = None,
+    # Default to the latest KoAlpaca dataset
+    hf_dataset: str = "Beomi/KoAlpaca-v1.1a",
+):
+    """주어진 경로 혹은 HuggingFace 데이터셋을 로드하여 ``DatasetDict`` 를 반환한다.
 
-    if train_path and valid_path:
-        # JSONL 형식 (각 줄이 {"instruction":..., "input":..., "output":...}) 을 가정
-        def _load(path):
-            with open(path, "r", encoding="utf-8") as f:
-                lines = [json.loads(l) for l in f]
-            return lines
-        train_data = _load(train_path)
-        valid_data = _load(valid_path)
-        dataset = {
-            "train": train_data,
-            "validation": valid_data,
-        }
+    로컬 JSONL 파일을 사용할 경우 ``datasets`` 의 ``json`` 로더를 이용해
+    ``DatasetDict`` 객체를 생성한다. 각 JSONL 라인은 ``instruction``/``input``/
+    ``output`` 필드를 가진다고 가정한다.
+    """
+
+    if train_path:
+        # ``load_dataset("json")`` 을 사용하면 map 등 ``datasets`` API 활용 가능
+        data_files = {"train": train_path}
+        if valid_path:
+            data_files["validation"] = valid_path
+        dataset = load_dataset("json", data_files=data_files)
     else:
-        # HuggingFace Datasets에서 KoAlpaca-v1.1a 불러오기
         try:
             dataset = load_dataset(hf_dataset)
         except Exception as e:
@@ -62,7 +61,11 @@ def format_sft(example: dict) -> dict:
 # -------------------------------------------------------------
 
 def load_model(model_dir: str = "./", dtype=torch.float16):
-    """로컬 디렉터리에서 MiMo 모델과 토크나이저를 로드한다."""
+    """로컬 디렉터리에서 MiMo 모델과 토크나이저를 로드한다.
+
+    가중치 파일은 `model-00001-of-00004.safetensors` 등으로 분할되어 있다는
+    가정하에 `model.safetensors.index.json`을 이용해 로드합니다.
+    """
     tokenizer = AutoTokenizer.from_pretrained(
         model_dir,
         trust_remote_code=True,
@@ -136,12 +139,18 @@ def main():
     output_dir = "./lora_output"  # 체크포인트 저장 경로
 
     # (필요 시 조절) GPU 메모리 상황에 따라 아래 값 조절
+    # 메모리가 부족하면 batch size를 줄이고 gradient_accumulation_steps를 늘리면
+    # 동일한 효과로 더 작은 메모리 사용이 가능합니다.
     per_device_train_batch_size = 1
     gradient_accumulation_steps = 4
 
     # 데이터 로드 -------------------------------------------------
     dataset = load_sft_dataset()
-    dataset = dataset.map(format_sft)
+    # KoAlpaca 데이터셋의 기본 컬럼을 정리하고 학습에 사용할 텍스트만 남긴다
+    dataset = dataset.map(
+        format_sft,
+        remove_columns=dataset["train"].column_names,
+    )
 
     # 토크나이저, 모델 로드 -------------------------------------
     tokenizer, base_model = load_model(model_dir)
@@ -171,7 +180,8 @@ def main():
         model=model,
         args=training_args,
         train_dataset=dataset["train"],
-        eval_dataset=dataset.get("validation"),
+        eval_dataset=dataset["validation"] if "validation" in dataset else None,
+
         tokenizer=tokenizer,
         data_collator=data_collator,
     )
