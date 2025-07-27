@@ -24,6 +24,7 @@ from transformers import (
 from modeling_mimo import MiMoForCausalLM
 from configuration_mimo import MiMoConfig
 
+
 # PEFT utilities for LoRA
 from peft import LoraConfig, get_peft_model, TaskType
 
@@ -48,6 +49,7 @@ config = MiMoConfig.from_pretrained(
 tokenizer = AutoTokenizer.from_pretrained(
     MODEL_DIR,
     config=config,
+
     trust_remote_code=True,
     local_files_only=True,
 )
