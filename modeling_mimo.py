@@ -8,7 +8,11 @@ from transformers.models.qwen2.modeling_qwen2 import (Qwen2Attention,
                                                       Qwen2MLP, Qwen2Model,
                                                       Qwen2RMSNorm)
 
-from .configuration_mimo import MiMoConfig
+# When this module is imported directly (e.g. by running a standalone script),
+# relative imports will fail because there is no package context. Import the
+# configuration class using an absolute import to make the module usable
+# both as part of a package and as a standalone file.
+from configuration_mimo import MiMoConfig
 
 
 class MiMoMTPLayers(nn.Module):
