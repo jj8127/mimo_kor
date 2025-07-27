@@ -1,14 +1,17 @@
 import json
+import os
 
 import torch
 from datasets import load_dataset
 from transformers import (
     AutoTokenizer,
-    AutoModelForCausalLM,
+    AutoConfig,
     TrainingArguments,
     Trainer,
     DataCollatorForLanguageModeling,
 )
+from modeling_mimo import MiMoForCausalLM
+from configuration_mimo import MiMoConfig
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
 
@@ -17,7 +20,7 @@ from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 # -------------------------------------------------------------
 def load_sft_dataset(train_path: str | None = None,
                      valid_path: str | None = None,
-                     hf_dataset: str = "beomi/KoAlpaca-v1.1a"):
+                     hf_dataset: str = "Beomi/KoAlpaca-v1"):
     """주어진 경로 혹은 HuggingFace 데이터셋을 로드하여 `train`과 `validation` 분할을 반환합니다."""
 
     if train_path and valid_path:
@@ -34,7 +37,14 @@ def load_sft_dataset(train_path: str | None = None,
         }
     else:
         # HuggingFace Datasets에서 KoAlpaca-v1 불러오기
-        dataset = load_dataset(hf_dataset)
+        try:
+            dataset = load_dataset(hf_dataset)
+        except Exception as e:
+            raise RuntimeError(
+                f"Dataset '{hf_dataset}' could not be loaded. "
+                f"Check the dataset name or provide local JSONL files."
+            ) from e
+
     return dataset
 
 
@@ -53,12 +63,39 @@ def format_sft(example: dict) -> dict:
 
 def load_model(model_dir: str = "./", dtype=torch.float16):
     """로컬 디렉터리에서 MiMo 모델과 토크나이저를 로드한다."""
-    tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained(
+    tokenizer = AutoTokenizer.from_pretrained(
         model_dir,
+        trust_remote_code=True,
+        local_files_only=True,
+    )
+
+    config_path = os.path.join(model_dir, "config.json")
+    if os.path.exists(config_path):
+        config = MiMoConfig.from_json_file(config_path)
+    else:
+        try:
+            # 기본 Qwen 설정을 불러와 MiMo 전용 설정으로 변환
+            base = AutoConfig.from_pretrained(
+                "Qwen/Qwen1.5-7B",
+                trust_remote_code=True,
+            )
+            config = MiMoConfig.from_dict(base.to_dict())
+            print(
+                "config.json not found, loaded Qwen base config from the Hub. "
+                "Provide a local config.json to avoid this."
+            )
+        except Exception as e:
+            raise FileNotFoundError(
+                "config.json is required in model_dir when offline"
+            ) from e
+
+    model = MiMoForCausalLM.from_pretrained(
+        model_dir,
+        config=config,
         trust_remote_code=True,
         torch_dtype=dtype,
         device_map="auto",
+        local_files_only=True,
     )
     return tokenizer, model
 
