@@ -1,0 +1,11 @@
+data/
+image/
+model/
+__pycache__/
+.vscode/
+.idea/
+*.pt
+*.png
+*.log
+*.npz
+*.safetensors
