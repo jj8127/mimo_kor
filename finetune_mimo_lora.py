@@ -11,6 +11,9 @@ from transformers import (
 )
 from modeling_mimo import MiMoForCausalLM
 from configuration_mimo import MiMoConfig
+# AutoConfig가 "mimo" model_type을 인식하도록 등록해준다.
+AutoConfig.register("mimo", MiMoConfig)
+
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
 
@@ -64,16 +67,13 @@ def load_model(model_dir: str = "./", dtype=torch.float16):
     """로컬 디렉터리에서 MiMo 모델과 토크나이저를 로드한다.
 
     가중치 파일은 `model-00001-of-00004.safetensors` 등으로 분할되어 있다는
-    가정하에 `model.safetensors.index.json`을 이용해 로드합니다.
+    가정하에 `model.safetensors.index.json`을 이용해 로드한다.
     """
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_dir,
-        trust_remote_code=True,
-        local_files_only=True,
-    )
 
     config_path = os.path.join(model_dir, "config.json")
     if os.path.exists(config_path):
+        # 우선 config를 로드하여 AutoConfig 호출 시 오류를 방지한다
+
         config = MiMoConfig.from_json_file(config_path)
     else:
         try:
@@ -91,6 +91,12 @@ def load_model(model_dir: str = "./", dtype=torch.float16):
             raise FileNotFoundError(
                 "config.json is required in model_dir when offline"
             ) from e
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_dir,
+        trust_remote_code=True,
+        local_files_only=True,
+    )
 
     model = MiMoForCausalLM.from_pretrained(
         model_dir,
@@ -181,7 +187,6 @@ def main():
         args=training_args,
         train_dataset=dataset["train"],
         eval_dataset=dataset["validation"] if "validation" in dataset else None,
-
         tokenizer=tokenizer,
         data_collator=data_collator,
     )

@@ -2,9 +2,8 @@
     "architectures": [
         "MiMoForCausalLM"
     ],
-    "tokenizer_class": [
-        "Qwen2Tokenizer"
-    ],
+    "tokenizer_class": "Qwen2Tokenizer",
+
     "auto_map": {
         "AutoConfig": "configuration_mimo.MiMoConfig",
         "AutoModel": "modeling_mimo.MiMoModel",
