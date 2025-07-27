@@ -17,7 +17,7 @@ from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 # -------------------------------------------------------------
 def load_sft_dataset(train_path: str | None = None,
                      valid_path: str | None = None,
-                     hf_dataset: str = "beomi/KoAlpaca-v1"):
+                     hf_dataset: str = "beomi/KoAlpaca-v1.1a"):
     """주어진 경로 혹은 HuggingFace 데이터셋을 로드하여 `train`과 `validation` 분할을 반환합니다."""
 
     if train_path and valid_path:
